@@ -54,70 +54,28 @@ SECTOR_KEYWORDS = {
     '汽车': ['汽车', '新能源车', '智能驾驶', '自动驾驶'],
 }
 
-# A股主板股票代码列表（扩展版，包含更多主板股票）
-# 上海交易所：600/601/603 + .SS
-# 深圳交易所：000/001/002 + .SZ
-SAMPLE_STOCKS = [
-    # 上证主要股票（扩展）
-    '600000.SS', '600004.SS', '600009.SS', '600010.SS', '600011.SS',
-    '600015.SS', '600016.SS', '600018.SS', '600019.SS', '600025.SS',
-    '600028.SS', '600029.SS', '600030.SS', '600031.SS', '600036.SS',
-    '600038.SS', '600048.SS', '600050.SS', '600061.SS', '600085.SS',
-    '600089.SS', '600100.SS', '600104.SS', '600109.SS', '600111.SS',
-    '600115.SS', '600150.SS', '600170.SS', '600176.SS', '600177.SS',
-    '600188.SS', '600196.SS', '600219.SS', '600221.SS', '600276.SS',
-    '600297.SS', '600309.SS', '600332.SS', '600340.SS', '600346.SS',
-    '600362.SS', '600369.SS', '600383.SS', '600406.SS', '600436.SS',
-    '600438.SS', '600482.SS', '600487.SS', '600489.SS', '600498.SS',
-    '600519.SS', '600522.SS', '600547.SS', '600570.SS', '600585.SS',
-    '600588.SS', '600606.SS', '600637.SS', '600660.SS', '600690.SS',
-    '600703.SS', '600745.SS', '600760.SS', '600809.SS', '600837.SS',
-    '600848.SS', '600887.SS', '600893.SS', '600900.SS', '600919.SS',
-    '600926.SS', '600958.SS', '600999.SS', '601012.SS', '601066.SS',
-    '601088.SS', '601100.SS', '601111.SS', '601138.SS', '601155.SS',
-    '601166.SS', '601169.SS', '601186.SS', '601211.SS', '601225.SS',
-    '601229.SS', '601236.SS', '601288.SS', '601318.SS', '601319.SS',
-    '601328.SS', '601336.SS', '601360.SS', '601377.SS', '601390.SS',
-    '601398.SS', '601601.SS', '601628.SS', '601633.SS', '601658.SS',
-    '601668.SS', '601669.SS', '601688.SS', '601728.SS', '601766.SS',
-    '601788.SS', '601800.SS', '601808.SS', '601818.SS', '601828.SS',
-    '601838.SS', '601857.SS', '601865.SS', '601872.SS', '601877.SS',
-    '601878.SS', '601881.SS', '601888.SS', '601898.SS', '601899.SS',
-    '601901.SS', '601916.SS', '601919.SS', '601933.SS', '601939.SS',
-    '601985.SS', '601988.SS', '601989.SS', '601995.SS', '601998.SS',
-    '603000.SS', '603019.SS', '603087.SS', '603160.SS', '603195.SS',
-    '603259.SS', '603260.SS', '603288.SS', '603369.SS', '603392.SS',
-    '603501.SS', '603799.SS', '603806.SS', '603899.SS', '603986.SS',
-    '603993.SS',
+# 生成所有A股主板股票代码
+# 上海交易所：600000-603999 + .SS
+# 深圳交易所：000000-002999 + .SZ
+def generate_all_main_board_stocks():
+    """生成所有可能的主板股票代码"""
+    stocks = []
 
-    # 深证主要股票（扩展）
-    '000001.SZ', '000002.SZ', '000004.SZ', '000006.SZ', '000008.SZ',
-    '000009.SZ', '000012.SZ', '000021.SZ', '000025.SZ', '000027.SZ',
-    '000039.SZ', '000060.SZ', '000061.SZ', '000063.SZ', '000066.SZ',
-    '000069.SZ', '000100.SZ', '000157.SZ', '000166.SZ', '000333.SZ',
-    '000338.SZ', '000400.SZ', '000402.SZ', '000413.SZ', '000415.SZ',
-    '000425.SZ', '000503.SZ', '000513.SZ', '000538.SZ', '000540.SZ',
-    '000559.SZ', '000568.SZ', '000596.SZ', '000625.SZ', '000627.SZ',
-    '000629.SZ', '000630.SZ', '000651.SZ', '000661.SZ', '000671.SZ',
-    '000703.SZ', '000708.SZ', '000709.SZ', '000723.SZ', '000725.SZ',
-    '000728.SZ', '000738.SZ', '000768.SZ', '000776.SZ', '000783.SZ',
-    '000786.SZ', '000792.SZ', '000800.SZ', '000826.SZ', '000830.SZ',
-    '000858.SZ', '000860.SZ', '000876.SZ', '000877.SZ', '000895.SZ',
-    '000898.SZ', '000938.SZ', '000959.SZ', '000961.SZ', '000963.SZ',
-    '001979.SZ', '002001.SZ', '002007.SZ', '002008.SZ', '002024.SZ',
-    '002027.SZ', '002032.SZ', '002044.SZ', '002049.SZ', '002050.SZ',
-    '002064.SZ', '002065.SZ', '002074.SZ', '002081.SZ', '002120.SZ',
-    '002129.SZ', '002142.SZ', '002153.SZ', '002179.SZ', '002202.SZ',
-    '002230.SZ', '002236.SZ', '002241.SZ', '002252.SZ', '002271.SZ',
-    '002304.SZ', '002311.SZ', '002352.SZ', '002371.SZ', '002384.SZ',
-    '002410.SZ', '002415.SZ', '002422.SZ', '002430.SZ', '002456.SZ',
-    '002460.SZ', '002463.SZ', '002466.SZ', '002475.SZ', '002493.SZ',
-    '002500.SZ', '002508.SZ', '002555.SZ', '002594.SZ', '002601.SZ',
-    '002602.SZ', '002607.SZ', '002624.SZ', '002648.SZ', '002673.SZ',
-    '002714.SZ', '002736.SZ', '002739.SZ', '002797.SZ', '002812.SZ',
-    '002821.SZ', '002841.SZ', '002916.SZ', '002920.SZ', '002938.SZ',
-    '002945.SZ', '002958.SZ', '002966.SZ',
-]
+    # 上海主板：600000-603999
+    for prefix in ['600', '601', '603']:
+        for i in range(1000):
+            code = f"{prefix}{i:03d}.SS"
+            stocks.append(code)
+
+    # 深圳主板：000000-002999
+    for prefix in ['000', '001', '002']:
+        for i in range(1000):
+            code = f"{prefix}{i:03d}.SZ"
+            stocks.append(code)
+
+    return stocks
+
+SAMPLE_STOCKS = generate_all_main_board_stocks()  # 约6000只股票代码
 
 def retry_on_failure(max_retries=3, delay=2):
     """重试装饰器"""
@@ -216,17 +174,24 @@ def get_hot_stocks(hot_sector_names):
     """使用Yahoo Finance获取A股优质股票"""
     try:
         print("正在从Yahoo Finance获取A股数据...")
-        print(f"  分析 {len(SAMPLE_STOCKS)} 只主板股票")
+
+        # 由于股票数量太多（6000只），限制每次分析的数量
+        # 随机采样或按顺序取前N只
+        import random
+        max_stocks_to_check = 500  # 每次最多检查500只
+        stocks_to_check = random.sample(SAMPLE_STOCKS, min(max_stocks_to_check, len(SAMPLE_STOCKS)))
+
+        print(f"  从 {len(SAMPLE_STOCKS)} 只主板股票中随机抽取 {len(stocks_to_check)} 只进行分析")
 
         stocks_data = []
         success_count = 0
         fail_count = 0
 
         # 批量获取股票数据
-        for i, symbol in enumerate(SAMPLE_STOCKS):
+        for i, symbol in enumerate(stocks_to_check):
             try:
-                if i % 10 == 0:
-                    print(f"  进度: {i}/{len(SAMPLE_STOCKS)}")
+                if i % 50 == 0:
+                    print(f"  进度: {i}/{len(stocks_to_check)}")
 
                 # 获取股票信息
                 ticker = yf.Ticker(symbol)
@@ -249,9 +214,21 @@ def get_hot_stocks(hot_sector_names):
                 if change_pct <= 0:
                     continue
 
-                # 获取股票信息
+                # 获取股票信息，优先使用中文名称
                 info = ticker.info
-                stock_name = info.get('longName', '') or info.get('shortName', '') or symbol.split('.')[0]
+                # 尝试多个字段获取中文名称
+                stock_name = (
+                    info.get('longName', '') or
+                    info.get('shortName', '') or
+                    info.get('quoteType', '') or
+                    symbol.split('.')[0]
+                )
+
+                # 如果名称是纯英文或代码，尝试从其他字段获取
+                # Yahoo Finance对A股可能返回英文名，这里保留代码作为备用
+                if not any('\u4e00' <= c <= '\u9fff' for c in stock_name):
+                    # 没有中文字符，使用股票代码
+                    stock_name = f"股票{symbol.split('.')[0]}"
 
                 # 计算成交量变化（活跃度）
                 volume_change = ((today['Volume'] - yesterday['Volume']) / yesterday['Volume']) * 100 if yesterday['Volume'] > 0 else 0
@@ -263,34 +240,37 @@ def get_hot_stocks(hot_sector_names):
                 shares_outstanding = info.get('sharesOutstanding', 0)
                 turnover = (today['Volume'] / shares_outstanding * 100) if shares_outstanding > 0 else 0
 
-                # 1. 涨幅得分 (0-30分)
-                change_score = min(change_pct * 3, 30)
+                # 新的评分系统（总分100分）
+                # 热度占比很大，成交量和趋势小一点
 
-                # 2. 成交量得分 (0-25分)
-                volume_score = min(abs(volume_change) / 10, 25)  # 成交量变化100%得满分
+                # 1. 涨幅得分 (0-25分)
+                change_score = min(change_pct * 2.5, 25)
 
-                # 3. 趋势得分 (0-20分) - 基于振幅
-                trend_score = min(amplitude * 2, 20)
+                # 2. 成交量得分 (0-15分) - 降低权重
+                volume_score = min(abs(volume_change) / 10, 15)
 
-                # 4. 板块热度得分 (0-25分)
+                # 3. 趋势得分 (0-10分) - 降低权重
+                trend_score = min(amplitude * 1, 10)
+
+                # 4. 板块热度得分 (0-50分) - 大幅提高权重
                 sector_score = 0
                 for sector_name in hot_sector_names:
                     for keyword in SECTOR_KEYWORDS.get(sector_name, []):
                         if keyword in stock_name:
-                            sector_score = 25
+                            sector_score = 50  # 热门板块给满分
                             break
                     if sector_score > 0:
                         break
 
-                # 如果不在热门板块，但涨幅和成交量都不错，也给一些分
-                if sector_score == 0 and change_pct > 3 and volume_change > 50:
-                    sector_score = 10
+                # 如果不在热门板块，但涨幅很高，也给一些热度分
+                if sector_score == 0 and change_pct > 5:
+                    sector_score = 20  # 涨幅高的股票也有一定热度
 
-                # 总分
+                # 总分（满分100分）
                 total_score = change_score + volume_score + trend_score + sector_score
 
-                # 收集所有上涨的股票（降低阈值到40分）
-                if total_score >= 40:
+                # 收集所有上涨的股票（降低阈值到30分，因为热度权重提高了）
+                if total_score >= 30:
                     stocks_data.append({
                         'code': symbol.split('.')[0],
                         'name': stock_name,
@@ -309,28 +289,21 @@ def get_hot_stocks(hot_sector_names):
 
                 success_count += 1
 
-                # 避免请求过快
-                time.sleep(0.1)
+                # 避免请求过快（但因为股票多，稍微加快一点）
+                time.sleep(0.05)
 
             except Exception as e:
                 fail_count += 1
                 continue
 
         print(f"\n  数据获取统计: 成功 {success_count} 只, 失败 {fail_count} 只")
-        print(f"  找到 {len(stocks_data)} 只评分≥40的股票")
+        print(f"  找到 {len(stocks_data)} 只评分≥30的股票")
 
         # 按综合得分排序
         sorted_stocks = sorted(stocks_data, key=lambda x: x['score'], reverse=True)
 
-        # 确保至少返回5只，最多10只
-        min_stocks = 5
-        max_stocks = 10
-
-        if len(sorted_stocks) >= min_stocks:
-            top_stocks = sorted_stocks[:max_stocks]
-        else:
-            # 如果不足5只，返回所有找到的
-            top_stocks = sorted_stocks
+        # 返回前10只最优质的股票
+        top_stocks = sorted_stocks[:10]
 
         print(f"  返回前 {len(top_stocks)} 只优质股票")
         return top_stocks
