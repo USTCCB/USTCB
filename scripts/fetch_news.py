@@ -6,6 +6,9 @@ A股财经新闻RSS聚合与邮件推送
 使用Yahoo Finance API获取A股数据
 """
 
+import sys
+sys.path.insert(0, r'E:\ENV\python-packages')
+
 import os
 import smtplib
 import feedparser
@@ -211,6 +214,10 @@ def get_hot_stocks(hot_sector_names):
                 # 使用映射表获取中文名称
                 stock_name = get_stock_name(symbol)
 
+                # Debug: 打印前几个股票的名称
+                if success_count < 5:
+                    print(f"  调试: {symbol} -> {stock_name}")
+
                 # 计算成交量变化（活跃度）
                 volume_change = ((today['Volume'] - yesterday['Volume']) / yesterday['Volume']) * 100 if yesterday['Volume'] > 0 else 0
 
@@ -253,7 +260,7 @@ def get_hot_stocks(hot_sector_names):
 
                 # 收集所有上涨的股票（降低阈值到30分，因为热度权重提高了）
                 if total_score >= 30:
-                    stocks_data.append({
+                    stock_dict = {
                         'code': symbol.split('.')[0],
                         'name': stock_name,
                         'price': float(today['Close']),
@@ -267,7 +274,11 @@ def get_hot_stocks(hot_sector_names):
                         'volume_score': round(volume_score, 1),
                         'trend_score': round(trend_score, 1),
                         'sector_score': round(sector_score, 1)
-                    })
+                    }
+                    stocks_data.append(stock_dict)
+                    # Debug: 打印前3个符合条件的股票
+                    if len(stocks_data) <= 3:
+                        print(f"  符合条件的股票: {stock_dict['code']} - {stock_dict['name']} (评分:{stock_dict['score']})")
 
                 success_count += 1
 
