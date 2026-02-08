@@ -1,0 +1,36 @@
+name: Keep Repository Active
+
+on:
+  schedule:
+    # 每月1号 UTC 0点运行（北京时间早上8点）
+    - cron: '0 0 1 * *'
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Update activity timestamp
+        run: |
+          # 创建或更新活跃时间戳文件
+          mkdir -p .github
+          echo "Last activity: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" > .github/LAST_ACTIVITY.txt
+          echo "Repository kept alive automatically" >> .github/LAST_ACTIVITY.txt
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .github/LAST_ACTIVITY.txt
+          git diff --quiet && git diff --staged --quiet || (git commit -m "chore: keep repository active [skip ci]" && git push)
+
+      - name: Trigger daily news workflow
+        run: |
+          echo "✅ Repository kept active on $(date)"
+          echo "📧 Daily news workflow will continue running as scheduled"
