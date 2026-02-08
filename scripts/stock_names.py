@@ -96,7 +96,7 @@ def get_stock_name(code):
         code: 股票代码，如 '600000' 或 '600000.SS'
 
     Returns:
-        中文名称，如果找不到则返回 '股票{代码}'
+        中文名称，如果找不到则返回友好的中文格式
     """
     # 移除后缀 .SS 或 .SZ
     clean_code = code.split('.')[0]
@@ -107,4 +107,10 @@ def get_stock_name(code):
     if name:
         return name
     else:
-        return f"股票{clean_code}"
+        # 如果找不到，根据代码生成友好的中文名称
+        if clean_code.startswith('6'):
+            return f"沪市{clean_code}"
+        elif clean_code.startswith('0'):
+            return f"深市{clean_code}"
+        else:
+            return f"股票{clean_code}"

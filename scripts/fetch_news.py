@@ -172,27 +172,20 @@ def analyze_hot_sectors(news_list):
     return hot_sectors
 
 def get_hot_stocks(hot_sector_names):
-    """使用Yahoo Finance获取A股优质股票"""
+    """使用Yahoo Finance获取A股优质股票 - 分析全部主板股票"""
     try:
         print("正在从Yahoo Finance获取A股数据...")
-
-        # 由于股票数量太多（6000只），限制每次分析的数量
-        # 随机采样或按顺序取前N只
-        import random
-        max_stocks_to_check = 500  # 每次最多检查500只
-        stocks_to_check = random.sample(SAMPLE_STOCKS, min(max_stocks_to_check, len(SAMPLE_STOCKS)))
-
-        print(f"  从 {len(SAMPLE_STOCKS)} 只主板股票中随机抽取 {len(stocks_to_check)} 只进行分析")
+        print(f"  准备分析全部 {len(SAMPLE_STOCKS)} 只主板股票")
 
         stocks_data = []
         success_count = 0
         fail_count = 0
 
-        # 批量获取股票数据
-        for i, symbol in enumerate(stocks_to_check):
+        # 分析全部股票（不再随机抽取）
+        for i, symbol in enumerate(SAMPLE_STOCKS):
             try:
-                if i % 50 == 0:
-                    print(f"  进度: {i}/{len(stocks_to_check)}")
+                if i % 100 == 0:
+                    print(f"  进度: {i}/{len(SAMPLE_STOCKS)}")
 
                 # 获取股票信息
                 ticker = yf.Ticker(symbol)
@@ -278,8 +271,8 @@ def get_hot_stocks(hot_sector_names):
 
                 success_count += 1
 
-                # 避免请求过快（但因为股票多，稍微加快一点）
-                time.sleep(0.05)
+                # 加快请求速度（全部股票需要更快）
+                time.sleep(0.02)
 
             except Exception as e:
                 fail_count += 1
