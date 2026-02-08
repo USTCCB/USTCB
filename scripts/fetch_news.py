@@ -79,13 +79,13 @@ def fetch_rss_news():
         try:
             print(f"正在抓取: {source_name}")
 
-            # 设置User-Agent和超时
+            # 设置User-Agent
             feedparser.USER_AGENT = USER_AGENT
 
-            # 使用重试机制抓取
+            # 使用重试机制抓取（feedparser不支持timeout参数，移除）
             @retry_on_failure(max_retries=2, delay=1)
             def fetch_feed():
-                return feedparser.parse(feed_url, timeout=10)
+                return feedparser.parse(feed_url)
 
             feed = fetch_feed()
 
@@ -109,7 +109,7 @@ def fetch_rss_news():
             print(f"  ✓ 成功获取 {len(feed.entries[:5])} 条")
 
             # 避免请求过快
-            time.sleep(1.5)
+            time.sleep(2)
 
         except Exception as e:
             print(f"  ✗ 抓取失败: {str(e)[:80]}")
@@ -150,15 +150,17 @@ def get_hot_stocks(hot_sector_names):
     try:
         print("正在获取实时行情数据...")
 
-        # 使用重试机制获取数据
-        @retry_on_failure(max_retries=3, delay=3)
+        # 使用重试机制获取数据，增加延迟避免被限流
+        @retry_on_failure(max_retries=3, delay=5)
         def fetch_stock_data():
+            # 添加随机延迟避免被识别为爬虫
+            time.sleep(2)
             return ak.stock_zh_a_spot_em()
 
         df = fetch_stock_data()
 
         if df is None or df.empty:
-            print("⚠️ 无法获取股票数据")
+            print("⚠️ 无法获取股票数据，可能是网络限制")
             return []
 
         print(f"  获取到 {len(df)} 只股票数据")
@@ -250,9 +252,9 @@ def get_hot_stocks(hot_sector_names):
         return top_stocks
 
     except Exception as e:
-        print(f"⚠️ 获取股票数据失败: {str(e)}")
-        import traceback
-        print(f"详细错误: {traceback.format_exc()[:200]}")
+        print(f"⚠️ 获取股票数据失败: {str(e)[:100]}")
+        print(f"  这可能是由于GitHub Actions网络限制导致")
+        print(f"  邮件将只包含RSS新闻内容")
         return []
 
 def format_email_content(news_list, hot_sectors, hot_stocks):
