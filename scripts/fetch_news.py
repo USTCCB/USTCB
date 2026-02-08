@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 import time
 from functools import wraps
 import requests
+from stock_names import get_stock_name  # 导入股票名称映射
 
 # RSS源列表 - 全部中文财经新闻源
 RSS_FEEDS = {
@@ -214,21 +215,8 @@ def get_hot_stocks(hot_sector_names):
                 if change_pct <= 0:
                     continue
 
-                # 获取股票信息，优先使用中文名称
-                info = ticker.info
-                # 尝试多个字段获取中文名称
-                stock_name = (
-                    info.get('longName', '') or
-                    info.get('shortName', '') or
-                    info.get('quoteType', '') or
-                    symbol.split('.')[0]
-                )
-
-                # 如果名称是纯英文或代码，尝试从其他字段获取
-                # Yahoo Finance对A股可能返回英文名，这里保留代码作为备用
-                if not any('\u4e00' <= c <= '\u9fff' for c in stock_name):
-                    # 没有中文字符，使用股票代码
-                    stock_name = f"股票{symbol.split('.')[0]}"
+                # 使用映射表获取中文名称
+                stock_name = get_stock_name(symbol)
 
                 # 计算成交量变化（活跃度）
                 volume_change = ((today['Volume'] - yesterday['Volume']) / yesterday['Volume']) * 100 if yesterday['Volume'] > 0 else 0
@@ -237,6 +225,7 @@ def get_hot_stocks(hot_sector_names):
                 amplitude = ((today['High'] - today['Low']) / yesterday['Close']) * 100
 
                 # 换手率估算（成交量/流通股本，简化处理）
+                info = ticker.info
                 shares_outstanding = info.get('sharesOutstanding', 0)
                 turnover = (today['Volume'] / shares_outstanding * 100) if shares_outstanding > 0 else 0
 
