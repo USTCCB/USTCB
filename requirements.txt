@@ -1,2 +1,2 @@
 feedparser==6.0.11
-akshare==1.14.26
+akshare>=1.18.0
