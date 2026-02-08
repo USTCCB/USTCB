@@ -130,11 +130,12 @@ def get_stock_name(code):
     if name:
         return name
     else:
-        # 如果找不到，根据代码生成友好的中文名称
+        # 如果找不到，使用更友好的命名
+        # 不再显示"沪市600123"，而是显示"上交所600123"或"深交所000123"
         if clean_code.startswith('6'):
-            return f"沪市{clean_code}"
+            return f"上交所{clean_code}"
         elif clean_code.startswith('0'):
-            return f"深市{clean_code}"
+            return f"深交所{clean_code}"
         else:
             return f"股票{clean_code}"
 
