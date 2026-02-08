@@ -13,19 +13,30 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 import time
+from functools import wraps
 
-# RSS源列表 - 主要财经网站
+# RSS源列表 - 主要财经网站（添加备用源）
 RSS_FEEDS = {
+    # 主要源
     '新浪财经-股票': 'https://feed.mix.sina.com.cn/api/roll/get?pageid=153&lid=2509&k=&num=20&page=1&r=0.5',
     '东方财富-要闻': 'http://feed43.com/eastmoney-news.xml',
     '证券时报': 'http://news.stcn.com/sd/rss.xml',
+
+    # RSSHub源（更稳定）
     '财联社快讯': 'https://rsshub.app/cls/telegraph',
     '第一财经': 'https://rsshub.app/yicai/brief',
     '金融界-股票': 'https://rsshub.app/jrj/stock',
     '东方财富-板块': 'https://rsshub.app/eastmoney/stock/bk',
     '同花顺-热点': 'https://rsshub.app/10jqka/news/stock',
     '雪球-热门': 'https://rsshub.app/xueqiu/hots',
+
+    # 备用源
+    '新浪财经-要闻': 'https://rsshub.app/sina/finance',
+    '36氪-快讯': 'https://rsshub.app/36kr/newsflashes',
 }
+
+# 请求头，模拟浏览器
+USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
 # 板块关键词映射
 SECTOR_KEYWORDS = {
@@ -41,14 +52,47 @@ SECTOR_KEYWORDS = {
     '汽车': ['汽车', '新能源车', '智能驾驶', '自动驾驶'],
 }
 
+def retry_on_failure(max_retries=3, delay=2):
+    """重试装饰器"""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    if attempt == max_retries - 1:
+                        raise
+                    print(f"  尝试 {attempt + 1}/{max_retries} 失败: {str(e)[:50]}, {delay}秒后重试...")
+                    time.sleep(delay)
+            return None
+        return wrapper
+    return decorator
+
 def fetch_rss_news():
-    """抓取所有RSS源的新闻"""
+    """抓取所有RSS源的新闻（带重试和超时）"""
     all_news = []
+    success_count = 0
+    fail_count = 0
 
     for source_name, feed_url in RSS_FEEDS.items():
         try:
             print(f"正在抓取: {source_name}")
-            feed = feedparser.parse(feed_url)
+
+            # 设置User-Agent和超时
+            feedparser.USER_AGENT = USER_AGENT
+
+            # 使用重试机制抓取
+            @retry_on_failure(max_retries=2, delay=1)
+            def fetch_feed():
+                return feedparser.parse(feed_url, timeout=10)
+
+            feed = fetch_feed()
+
+            if not feed or not hasattr(feed, 'entries') or not feed.entries:
+                print(f"  ⚠️ {source_name} 返回空数据")
+                fail_count += 1
+                continue
 
             # 获取前5条新闻
             for entry in feed.entries[:5]:
@@ -61,13 +105,18 @@ def fetch_rss_news():
                 }
                 all_news.append(news_item)
 
+            success_count += 1
+            print(f"  ✓ 成功获取 {len(feed.entries[:5])} 条")
+
             # 避免请求过快
-            time.sleep(1)
+            time.sleep(1.5)
 
         except Exception as e:
-            print(f"抓取 {source_name} 失败: {str(e)}")
+            print(f"  ✗ 抓取失败: {str(e)[:80]}")
+            fail_count += 1
             continue
 
+    print(f"\n抓取统计: 成功 {success_count} 个源, 失败 {fail_count} 个源")
     return all_news
 
 def analyze_hot_sectors(news_list):
@@ -97,12 +146,22 @@ def analyze_hot_sectors(news_list):
     return hot_sectors
 
 def get_hot_stocks(hot_sector_names):
-    """获取综合评分最高的A股股票（排除创业板和科创板）"""
+    """获取综合评分最高的A股股票（排除创业板和科创板）- 优化版"""
     try:
         print("正在获取实时行情数据...")
 
-        # 获取沪深A股实时行情
-        df = ak.stock_zh_a_spot_em()
+        # 使用重试机制获取数据
+        @retry_on_failure(max_retries=3, delay=3)
+        def fetch_stock_data():
+            return ak.stock_zh_a_spot_em()
+
+        df = fetch_stock_data()
+
+        if df is None or df.empty:
+            print("⚠️ 无法获取股票数据")
+            return []
+
+        print(f"  获取到 {len(df)} 只股票数据")
 
         # 过滤条件：
         # 1. 排除创业板(300开头)和科创板(688开头)
@@ -116,75 +175,84 @@ def get_hot_stocks(hot_sector_names):
             (df['代码'].str.startswith('002'))
         ]
 
+        print(f"  主板股票: {len(df)} 只")
+
         # 过滤掉ST股票和停牌股票
-        df = df[~df['名称'].str.contains('ST|退')]
+        df = df[~df['名称'].str.contains('ST|退', na=False)]
         df = df[df['涨跌幅'] != 0]  # 排除停牌
+
+        print(f"  过滤后: {len(df)} 只")
 
         # 计算综合评分
         scores = []
         for idx, row in df.iterrows():
-            stock_name = row['名称']
+            try:
+                stock_name = row['名称']
 
-            # 1. 涨幅得分 (0-30分)
-            change_pct = float(row['涨跌幅'])
-            if change_pct > 0:
+                # 1. 涨幅得分 (0-30分)
+                change_pct = float(row['涨跌幅'])
+                if change_pct <= 0:
+                    continue  # 跳过下跌的股票
+
                 change_score = min(change_pct * 3, 30)  # 最高30分
-            else:
-                continue  # 跳过下跌的股票
 
-            # 2. 成交量得分 (0-25分) - 相对于流通市值的换手率
-            turnover = float(row['换手率']) if row['换手率'] else 0
-            volume_score = min(turnover * 2.5, 25)  # 换手率10%得满分
+                # 2. 成交量得分 (0-25分) - 相对于流通市值的换手率
+                turnover = float(row['换手率']) if row['换手率'] else 0
+                volume_score = min(turnover * 2.5, 25)  # 换手率10%得满分
 
-            # 3. 趋势得分 (0-20分) - 基于5日涨幅
-            # 这里简化处理，用振幅作为活跃度指标
-            amplitude = float(row['振幅']) if row['振幅'] else 0
-            trend_score = min(amplitude * 2, 20)
+                # 3. 趋势得分 (0-20分) - 基于振幅
+                amplitude = float(row['振幅']) if row['振幅'] else 0
+                trend_score = min(amplitude * 2, 20)
 
-            # 4. 板块热度得分 (0-25分)
-            sector_score = 0
-            for sector_name in hot_sector_names:
-                # 检查股票名称是否包含板块关键词
-                for keyword in SECTOR_KEYWORDS.get(sector_name, []):
-                    if keyword in stock_name:
-                        sector_score = 25
+                # 4. 板块热度得分 (0-25分)
+                sector_score = 0
+                for sector_name in hot_sector_names:
+                    # 检查股票名称是否包含板块关键词
+                    for keyword in SECTOR_KEYWORDS.get(sector_name, []):
+                        if keyword in stock_name:
+                            sector_score = 25
+                            break
+                    if sector_score > 0:
                         break
-                if sector_score > 0:
-                    break
 
-            # 如果不在热门板块，但涨幅和成交量都不错，也给一些分
-            if sector_score == 0 and change_pct > 3 and turnover > 5:
-                sector_score = 10
+                # 如果不在热门板块，但涨幅和成交量都不错，也给一些分
+                if sector_score == 0 and change_pct > 3 and turnover > 5:
+                    sector_score = 10
 
-            # 总分
-            total_score = change_score + volume_score + trend_score + sector_score
+                # 总分
+                total_score = change_score + volume_score + trend_score + sector_score
 
-            # 只保留总分60分以上的股票
-            if total_score >= 60:
-                scores.append({
-                    'code': row['代码'],
-                    'name': stock_name,
-                    'price': float(row['最新价']),
-                    'change_pct': change_pct,
-                    'turnover': turnover,
-                    'amplitude': amplitude,
-                    'volume': float(row['成交量']) if row['成交量'] else 0,
-                    'market_cap': float(row['总市值']) if row['总市值'] else 0,
-                    'score': round(total_score, 1),
-                    'change_score': round(change_score, 1),
-                    'volume_score': round(volume_score, 1),
-                    'trend_score': round(trend_score, 1),
-                    'sector_score': round(sector_score, 1)
-                })
+                # 只保留总分60分以上的股票
+                if total_score >= 60:
+                    scores.append({
+                        'code': row['代码'],
+                        'name': stock_name,
+                        'price': float(row['最新价']),
+                        'change_pct': change_pct,
+                        'turnover': turnover,
+                        'amplitude': amplitude,
+                        'volume': float(row['成交量']) if row['成交量'] else 0,
+                        'market_cap': float(row['总市值']) if row['总市值'] else 0,
+                        'score': round(total_score, 1),
+                        'change_score': round(change_score, 1),
+                        'volume_score': round(volume_score, 1),
+                        'trend_score': round(trend_score, 1),
+                        'sector_score': round(sector_score, 1)
+                    })
+            except Exception as e:
+                # 单个股票处理失败不影响其他股票
+                continue
 
         # 按综合得分排序，取前8只
         top_stocks = sorted(scores, key=lambda x: x['score'], reverse=True)[:8]
 
-        print(f"找到 {len(top_stocks)} 只综合评分较高的股票")
+        print(f"  找到 {len(scores)} 只评分≥60的股票，取前 {len(top_stocks)} 只")
         return top_stocks
 
     except Exception as e:
-        print(f"获取股票数据失败: {str(e)}")
+        print(f"⚠️ 获取股票数据失败: {str(e)}")
+        import traceback
+        print(f"详细错误: {traceback.format_exc()[:200]}")
         return []
 
 def format_email_content(news_list, hot_sectors, hot_stocks):
