@@ -3,36 +3,36 @@
 """
 A股财经新闻RSS聚合与邮件推送
 每日自动抓取主要财经网站的RSS新闻并发送到邮箱
+使用Yahoo Finance API获取A股数据
 """
 
 import os
 import smtplib
 import feedparser
-import akshare as ak
+import yfinance as yf
+import pandas as pd
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 from functools import wraps
+import requests
 
-# RSS源列表 - 主要财经网站（添加备用源）
+# RSS源列表 - 使用国际可访问的财经新闻源
 RSS_FEEDS = {
-    # 主要源
-    '新浪财经-股票': 'https://feed.mix.sina.com.cn/api/roll/get?pageid=153&lid=2509&k=&num=20&page=1&r=0.5',
-    '东方财富-要闻': 'http://feed43.com/eastmoney-news.xml',
-    '证券时报': 'http://news.stcn.com/sd/rss.xml',
+    # 国际财经新闻（中国相关）
+    'Reuters China': 'https://www.reutersagency.com/feed/?taxonomy=best-topics&post_type=best',
+    'Bloomberg Asia': 'https://feeds.bloomberg.com/markets/news.rss',
+    'CNBC Asia': 'https://www.cnbc.com/id/19854910/device/rss/rss.html',
 
-    # RSSHub源（更稳定）
-    '财联社快讯': 'https://rsshub.app/cls/telegraph',
-    '第一财经': 'https://rsshub.app/yicai/brief',
-    '金融界-股票': 'https://rsshub.app/jrj/stock',
-    '东方财富-板块': 'https://rsshub.app/eastmoney/stock/bk',
-    '同花顺-热点': 'https://rsshub.app/10jqka/news/stock',
-    '雪球-热门': 'https://rsshub.app/xueqiu/hots',
+    # 可从国外访问的中文财经源
+    'FT中文网': 'https://www.ftchinese.com/rss/news',
+    '华尔街日报中文': 'https://cn.wsj.com/zh-hans/rss',
 
-    # 备用源
-    '新浪财经-要闻': 'https://rsshub.app/sina/finance',
-    '36氪-快讯': 'https://rsshub.app/36kr/newsflashes',
+    # RSSHub公共实例（可能可用）
+    'RSSHub-财联社': 'https://rsshub.app/cls/telegraph',
+    'RSSHub-36氪': 'https://rsshub.app/36kr/newsflashes',
+    'RSSHub-新浪财经': 'https://rsshub.app/sina/finance',
 }
 
 # 请求头，模拟浏览器
@@ -51,6 +51,31 @@ SECTOR_KEYWORDS = {
     '新基建': ['5G', '数据中心', '云计算', '物联网', '工业互联网'],
     '汽车': ['汽车', '新能源车', '智能驾驶', '自动驾驶'],
 }
+
+# A股主板股票代码列表（示例，包含主要指数成分股）
+# 上海交易所：600/601/603 + .SS
+# 深圳交易所：000/001/002 + .SZ
+SAMPLE_STOCKS = [
+    # 上证主要股票
+    '600000.SS', '600009.SS', '600016.SS', '600019.SS', '600028.SS',
+    '600030.SS', '600036.SS', '600048.SS', '600050.SS', '600104.SS',
+    '600276.SS', '600309.SS', '600519.SS', '600585.SS', '600690.SS',
+    '600887.SS', '600900.SS', '601012.SS', '601088.SS', '601166.SS',
+    '601318.SS', '601328.SS', '601398.SS', '601601.SS', '601628.SS',
+    '601668.SS', '601688.SS', '601818.SS', '601857.SS', '601888.SS',
+    '601899.SS', '601919.SS', '601988.SS', '601998.SS', '603259.SS',
+    '603288.SS', '603501.SS', '603986.SS', '603993.SS',
+
+    # 深证主要股票
+    '000001.SZ', '000002.SZ', '000063.SZ', '000066.SZ', '000100.SZ',
+    '000333.SZ', '000338.SZ', '000425.SZ', '000538.SZ', '000568.SZ',
+    '000625.SZ', '000651.SZ', '000661.SZ', '000725.SZ', '000768.SZ',
+    '000858.SZ', '000876.SZ', '001979.SZ', '002001.SZ', '002027.SZ',
+    '002049.SZ', '002050.SZ', '002142.SZ', '002230.SZ', '002236.SZ',
+    '002241.SZ', '002252.SZ', '002304.SZ', '002311.SZ', '002352.SZ',
+    '002371.SZ', '002415.SZ', '002460.SZ', '002475.SZ', '002493.SZ',
+    '002594.SZ', '002601.SZ', '002714.SZ', '002916.SZ', '002938.SZ',
+]
 
 def retry_on_failure(max_retries=3, delay=2):
     """重试装饰器"""
@@ -146,70 +171,68 @@ def analyze_hot_sectors(news_list):
     return hot_sectors
 
 def get_hot_stocks(hot_sector_names):
-    """获取综合评分最高的A股股票（排除创业板和科创板）- 优化版"""
+    """使用Yahoo Finance获取A股优质股票"""
     try:
-        print("正在获取实时行情数据...")
+        print("正在从Yahoo Finance获取A股数据...")
+        print(f"  分析 {len(SAMPLE_STOCKS)} 只主板股票")
 
-        # 使用重试机制获取数据，增加延迟避免被限流
-        @retry_on_failure(max_retries=3, delay=5)
-        def fetch_stock_data():
-            # 添加随机延迟避免被识别为爬虫
-            time.sleep(2)
-            return ak.stock_zh_a_spot_em()
+        stocks_data = []
+        success_count = 0
+        fail_count = 0
 
-        df = fetch_stock_data()
-
-        if df is None or df.empty:
-            print("⚠️ 无法获取股票数据，可能是网络限制")
-            return []
-
-        print(f"  获取到 {len(df)} 只股票数据")
-
-        # 过滤条件：
-        # 1. 排除创业板(300开头)和科创板(688开头)
-        # 2. 只保留主板：沪市(600/601/603)和深市(000/001/002)
-        df = df[
-            (df['代码'].str.startswith('600')) |
-            (df['代码'].str.startswith('601')) |
-            (df['代码'].str.startswith('603')) |
-            (df['代码'].str.startswith('000')) |
-            (df['代码'].str.startswith('001')) |
-            (df['代码'].str.startswith('002'))
-        ]
-
-        print(f"  主板股票: {len(df)} 只")
-
-        # 过滤掉ST股票和停牌股票
-        df = df[~df['名称'].str.contains('ST|退', na=False)]
-        df = df[df['涨跌幅'] != 0]  # 排除停牌
-
-        print(f"  过滤后: {len(df)} 只")
-
-        # 计算综合评分
-        scores = []
-        for idx, row in df.iterrows():
+        # 批量获取股票数据
+        for i, symbol in enumerate(SAMPLE_STOCKS):
             try:
-                stock_name = row['名称']
+                if i % 10 == 0:
+                    print(f"  进度: {i}/{len(SAMPLE_STOCKS)}")
+
+                # 获取股票信息
+                ticker = yf.Ticker(symbol)
+
+                # 获取最近2天的历史数据
+                hist = ticker.history(period='2d')
+
+                if hist.empty or len(hist) < 2:
+                    fail_count += 1
+                    continue
+
+                # 获取今日和昨日数据
+                today = hist.iloc[-1]
+                yesterday = hist.iloc[-2]
+
+                # 计算涨跌幅
+                change_pct = ((today['Close'] - yesterday['Close']) / yesterday['Close']) * 100
+
+                # 只保留上涨的股票
+                if change_pct <= 0:
+                    continue
+
+                # 获取股票信息
+                info = ticker.info
+                stock_name = info.get('longName', '') or info.get('shortName', '') or symbol.split('.')[0]
+
+                # 计算成交量变化（活跃度）
+                volume_change = ((today['Volume'] - yesterday['Volume']) / yesterday['Volume']) * 100 if yesterday['Volume'] > 0 else 0
+
+                # 计算振幅
+                amplitude = ((today['High'] - today['Low']) / yesterday['Close']) * 100
+
+                # 换手率估算（成交量/流通股本，简化处理）
+                shares_outstanding = info.get('sharesOutstanding', 0)
+                turnover = (today['Volume'] / shares_outstanding * 100) if shares_outstanding > 0 else 0
 
                 # 1. 涨幅得分 (0-30分)
-                change_pct = float(row['涨跌幅'])
-                if change_pct <= 0:
-                    continue  # 跳过下跌的股票
+                change_score = min(change_pct * 3, 30)
 
-                change_score = min(change_pct * 3, 30)  # 最高30分
-
-                # 2. 成交量得分 (0-25分) - 相对于流通市值的换手率
-                turnover = float(row['换手率']) if row['换手率'] else 0
-                volume_score = min(turnover * 2.5, 25)  # 换手率10%得满分
+                # 2. 成交量得分 (0-25分)
+                volume_score = min(abs(volume_change) / 10, 25)  # 成交量变化100%得满分
 
                 # 3. 趋势得分 (0-20分) - 基于振幅
-                amplitude = float(row['振幅']) if row['振幅'] else 0
                 trend_score = min(amplitude * 2, 20)
 
                 # 4. 板块热度得分 (0-25分)
                 sector_score = 0
                 for sector_name in hot_sector_names:
-                    # 检查股票名称是否包含板块关键词
                     for keyword in SECTOR_KEYWORDS.get(sector_name, []):
                         if keyword in stock_name:
                             sector_score = 25
@@ -218,7 +241,7 @@ def get_hot_stocks(hot_sector_names):
                         break
 
                 # 如果不在热门板块，但涨幅和成交量都不错，也给一些分
-                if sector_score == 0 and change_pct > 3 and turnover > 5:
+                if sector_score == 0 and change_pct > 3 and volume_change > 50:
                     sector_score = 10
 
                 # 总分
@@ -226,35 +249,42 @@ def get_hot_stocks(hot_sector_names):
 
                 # 只保留总分60分以上的股票
                 if total_score >= 60:
-                    scores.append({
-                        'code': row['代码'],
+                    stocks_data.append({
+                        'code': symbol.split('.')[0],
                         'name': stock_name,
-                        'price': float(row['最新价']),
-                        'change_pct': change_pct,
-                        'turnover': turnover,
-                        'amplitude': amplitude,
-                        'volume': float(row['成交量']) if row['成交量'] else 0,
-                        'market_cap': float(row['总市值']) if row['总市值'] else 0,
+                        'price': float(today['Close']),
+                        'change_pct': round(change_pct, 2),
+                        'turnover': round(turnover, 2),
+                        'amplitude': round(amplitude, 2),
+                        'volume': int(today['Volume']),
+                        'market_cap': info.get('marketCap', 0),
                         'score': round(total_score, 1),
                         'change_score': round(change_score, 1),
                         'volume_score': round(volume_score, 1),
                         'trend_score': round(trend_score, 1),
                         'sector_score': round(sector_score, 1)
                     })
+
+                success_count += 1
+
+                # 避免请求过快
+                time.sleep(0.1)
+
             except Exception as e:
-                # 单个股票处理失败不影响其他股票
+                fail_count += 1
                 continue
 
-        # 按综合得分排序，取前8只
-        top_stocks = sorted(scores, key=lambda x: x['score'], reverse=True)[:8]
+        print(f"\n  数据获取统计: 成功 {success_count} 只, 失败 {fail_count} 只")
+        print(f"  找到 {len(stocks_data)} 只评分≥60的股票")
 
-        print(f"  找到 {len(scores)} 只评分≥60的股票，取前 {len(top_stocks)} 只")
+        # 按综合得分排序，取前8只
+        top_stocks = sorted(stocks_data, key=lambda x: x['score'], reverse=True)[:8]
+
+        print(f"  返回前 {len(top_stocks)} 只优质股票")
         return top_stocks
 
     except Exception as e:
         print(f"⚠️ 获取股票数据失败: {str(e)[:100]}")
-        print(f"  这可能是由于GitHub Actions网络限制导致")
-        print(f"  邮件将只包含RSS新闻内容")
         return []
 
 def format_email_content(news_list, hot_sectors, hot_stocks):
