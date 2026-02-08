@@ -21,6 +21,23 @@ RSS_FEEDS = {
     '财联社快讯': 'https://rsshub.app/cls/telegraph',
     '第一财经': 'https://rsshub.app/yicai/brief',
     '金融界-股票': 'https://rsshub.app/jrj/stock',
+    '东方财富-板块': 'https://rsshub.app/eastmoney/stock/bk',
+    '同花顺-热点': 'https://rsshub.app/10jqka/news/stock',
+    '雪球-热门': 'https://rsshub.app/xueqiu/hots',
+}
+
+# 板块关键词映射
+SECTOR_KEYWORDS = {
+    '新能源': ['新能源', '光伏', '风电', '储能', '锂电', '电池'],
+    '人工智能': ['AI', '人工智能', '大模型', '算力', 'ChatGPT', '芯片'],
+    '医药': ['医药', '生物', '疫苗', '医疗', 'CXO', '创新药'],
+    '半导体': ['半导体', '芯片', '集成电路', '晶圆', '光刻'],
+    '军工': ['军工', '国防', '航空', '航天', '导弹'],
+    '消费': ['消费', '白酒', '食品', '零售', '电商'],
+    '地产': ['地产', '房地产', '物业', '建筑'],
+    '金融': ['银行', '保险', '券商', '证券', '信托'],
+    '新基建': ['5G', '数据中心', '云计算', '物联网', '工业互联网'],
+    '汽车': ['汽车', '新能源车', '智能驾驶', '自动驾驶'],
 }
 
 def fetch_rss_news():
@@ -52,7 +69,33 @@ def fetch_rss_news():
 
     return all_news
 
-def format_email_content(news_list):
+def analyze_hot_sectors(news_list):
+    """分析新闻中提到的热门板块"""
+    sector_mentions = {sector: [] for sector in SECTOR_KEYWORDS.keys()}
+
+    for news in news_list:
+        text = news['title'] + ' ' + news.get('summary', '')
+
+        for sector, keywords in SECTOR_KEYWORDS.items():
+            for keyword in keywords:
+                if keyword in text:
+                    sector_mentions[sector].append({
+                        'title': news['title'],
+                        'source': news['source'],
+                        'link': news['link']
+                    })
+                    break  # 找到一个关键词就够了
+
+    # 按提及次数排序，取前5个
+    hot_sectors = sorted(
+        [(sector, items) for sector, items in sector_mentions.items() if items],
+        key=lambda x: len(x[1]),
+        reverse=True
+    )[:5]
+
+    return hot_sectors
+
+def format_email_content(news_list, hot_sectors):
     """格式化邮件内容为HTML"""
     today = datetime.now().strftime('%Y年%m月%d日')
 
@@ -64,6 +107,18 @@ def format_email_content(news_list):
             body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
             .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                        color: white; padding: 20px; text-align: center; }}
+            .section-title {{ font-size: 20px; font-weight: bold; color: #667eea;
+                             margin: 25px 0 15px 0; padding-bottom: 10px;
+                             border-bottom: 2px solid #667eea; }}
+            .hot-sectors {{ display: flex; flex-wrap: wrap; gap: 10px; margin: 15px 0; }}
+            .sector-tag {{ background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                          color: white; padding: 10px 15px; border-radius: 20px;
+                          font-weight: bold; display: inline-block; }}
+            .sector-count {{ background: rgba(255,255,255,0.3); padding: 2px 8px;
+                            border-radius: 10px; margin-left: 5px; }}
+            .sector-news {{ background: #fff3e0; padding: 10px; margin: 10px 0;
+                           border-left: 4px solid #ff9800; border-radius: 4px; }}
+            .sector-news-title {{ font-size: 14px; color: #333; margin: 5px 0; }}
             .news-item {{ border-left: 4px solid #667eea; padding: 15px;
                          margin: 15px 0; background: #f9f9f9; }}
             .source {{ color: #667eea; font-weight: bold; font-size: 14px; }}
@@ -81,6 +136,34 @@ def format_email_content(news_list):
         </div>
         <div style="padding: 20px;">
     """
+
+    # 热门板块部分
+    if hot_sectors:
+        html_content += '<div class="section-title">🔥 今日热门板块</div>'
+        html_content += '<div class="hot-sectors">'
+        for sector, items in hot_sectors:
+            html_content += f'''
+            <div class="sector-tag">
+                {sector} <span class="sector-count">{len(items)}条</span>
+            </div>
+            '''
+        html_content += '</div>'
+
+        # 显示每个板块的相关新闻
+        for sector, items in hot_sectors:
+            html_content += f'<div style="margin: 20px 0;"><strong>📊 {sector}板块相关：</strong></div>'
+            for item in items[:3]:  # 每个板块最多显示3条
+                html_content += f'''
+                <div class="sector-news">
+                    <div class="sector-news-title">• {item['title']}</div>
+                    <div style="font-size: 12px; color: #999; margin-top: 5px;">
+                        来源: {item['source']} | <a href="{item['link']}" style="color: #ff9800;">查看详情</a>
+                    </div>
+                </div>
+                '''
+
+    # 全部新闻部分
+    html_content += '<div class="section-title">📰 今日财经要闻</div>'
 
     if not news_list:
         html_content += "<p>今日暂无新闻更新</p>"
@@ -100,6 +183,9 @@ def format_email_content(news_list):
         <div class="footer">
             <p>本邮件由GitHub Actions自动发送</p>
             <p>⚠️ 本邮件仅供信息参考，不构成投资建议</p>
+            <p style="font-size: 12px; color: #ccc; margin-top: 10px;">
+                板块热度基于新闻提及次数统计，仅供参考
+            </p>
         </div>
     </body>
     </html>
@@ -163,11 +249,16 @@ def main():
     news_list = fetch_rss_news()
     print(f"✅ 成功抓取 {len(news_list)} 条新闻\n")
 
-    # 2. 格式化邮件内容
-    print("📝 正在格式化邮件内容...")
-    email_content = format_email_content(news_list)
+    # 2. 分析热门板块
+    print("🔥 正在分析热门板块...")
+    hot_sectors = analyze_hot_sectors(news_list)
+    print(f"✅ 发现 {len(hot_sectors)} 个热门板块\n")
 
-    # 3. 发送邮件
+    # 3. 格式化邮件内容
+    print("📝 正在格式化邮件内容...")
+    email_content = format_email_content(news_list, hot_sectors)
+
+    # 4. 发送邮件
     print("📧 正在发送邮件...")
     success = send_email(email_content, recipient_email, smtp_password)
 
