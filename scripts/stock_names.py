@@ -2,9 +2,13 @@
 # -*- coding: utf-8 -*-
 """
 A股股票代码到中文名称映射表
-包含主要的主板股票
+支持从JSON文件加载完整列表
 """
 
+import json
+import os
+
+# 基础映射表（常见股票）
 STOCK_NAMES = {
     # 上海主板 - 600开头
     '600000': '浦发银行', '600004': '白云机场', '600009': '上海机场', '600010': '包钢股份',
@@ -88,6 +92,25 @@ STOCK_NAMES = {
     '002958': '青农商行', '002966': '苏州银行',
 }
 
+# 尝试从JSON文件加载完整列表
+def load_stock_list_from_json():
+    """从JSON文件加载完整的股票列表"""
+    json_path = os.path.join(os.path.dirname(__file__), 'stock_list.json')
+    if os.path.exists(json_path):
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"加载stock_list.json失败: {e}")
+            return {}
+    return {}
+
+# 加载完整列表（如果存在）
+FULL_STOCK_LIST = load_stock_list_from_json()
+
+# 合并映射表
+ALL_STOCK_NAMES = {**STOCK_NAMES, **FULL_STOCK_LIST}
+
 def get_stock_name(code):
     """
     根据股票代码获取中文名称
@@ -96,13 +119,13 @@ def get_stock_name(code):
         code: 股票代码，如 '600000' 或 '600000.SS'
 
     Returns:
-        中文名称，如果找不到则返回友好的中文格式
+        中文名称
     """
     # 移除后缀 .SS 或 .SZ
     clean_code = code.split('.')[0]
 
-    # 从映射表中查找
-    name = STOCK_NAMES.get(clean_code)
+    # 从合并后的映射表中查找
+    name = ALL_STOCK_NAMES.get(clean_code)
 
     if name:
         return name
@@ -114,3 +137,10 @@ def get_stock_name(code):
             return f"深市{clean_code}"
         else:
             return f"股票{clean_code}"
+
+# 打印加载信息
+if FULL_STOCK_LIST:
+    print(f"✅ 已从JSON文件加载 {len(FULL_STOCK_LIST)} 只股票名称")
+else:
+    print(f"ℹ️ 使用内置映射表（{len(STOCK_NAMES)} 只���票）")
+print(f"📊 总计可用: {len(ALL_STOCK_NAMES)} 只股票的中文名称")
