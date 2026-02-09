@@ -2,8 +2,8 @@ name: Daily Financial News
 
 on:
   schedule:
-    # 每天北京时间早上8点运行 (UTC 0点)
-    - cron: '0 0 * * *'
+    # 每天北京时间晚上10点运行 (UTC 14点)
+    - cron: '0 14 * * *'
   workflow_dispatch: # 允许手动触发
 
 jobs:
