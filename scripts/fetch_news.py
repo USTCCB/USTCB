@@ -468,6 +468,14 @@ def format_email_content(
                 <div class="news-summary">{summary}</div>
             </div>
             """
+    # 如果热门板块和国内要闻都为空，给出友好提示，避免页面一片空白
+    if not hot_sectors and not cn_news:
+        html += """
+        <p style="color:#747d8c;font-size:13px;margin-top:10px;">
+            今日未能从当前RSS源中获取到明显的A股板块和国内财经新闻，通常是网络环境或数据源限流导致。
+            你可以参考下方的「量化严选A股标的」和「全球前沿与财经要闻」作为参考。
+        </p>
+        """
 
     # 2. 算法严选 A 股
     html += '<div class="section-title">🎯 量化引擎严选 A股标的 (Top 10)</div>'
