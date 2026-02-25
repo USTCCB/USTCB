@@ -16,6 +16,7 @@ import time
 
 import feedparser
 import pandas as pd
+import requests
 import yfinance as yf
 
 from stock_names import get_stock_name
@@ -60,6 +61,16 @@ USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/120.0.0.0 Safari/537.36"
 )
+
+
+# 需要默认进行英文->中文翻译的源
+ENGLISH_SOURCES = {
+    "Reuters-US-Markets",
+    "Reuters-World-News",
+    "TechCrunch-AI",
+    "TechCrunch-Main",
+    "SCMP-Business",
+}
 
 
 # 热门板块关键词（强调 AI 大模型、出海等当下热点）
@@ -110,6 +121,42 @@ def retry_on_failure(max_retries: int = 3, delay: int = 2):
     return decorator
 
 
+def translate_text(text: str, target_lang: str = "zh") -> str:
+    """
+    使用免费/自建的 LibreTranslate 兼容 API 将文本翻译为中文。
+    - 默认读取环境变量 TRANSLATE_API_URL（必须），可选 TRANSLATE_API_KEY。
+    - 调用失败时直接返回原文，保证邮件正常发送。
+    """
+    text = (text or "").strip()
+    if not text:
+        return text
+
+    api_url = os.getenv("TRANSLATE_API_URL")
+    if not api_url:
+        # 未配置翻译服务时直接返回原文
+        return text
+
+    payload = {
+        "q": text,
+        "source": "auto",
+        "target": target_lang,
+        "format": "text",
+    }
+    api_key = os.getenv("TRANSLATE_API_KEY")
+    if api_key:
+        payload["api_key"] = api_key
+
+    try:
+        resp = requests.post(api_url, json=payload, timeout=10)
+        if resp.status_code != 200:
+            return text
+        data = resp.json()
+        translated = data.get("translatedText") or data.get("translated_text")
+        return translated or text
+    except Exception:
+        return text
+
+
 def fetch_rss_news() -> dict[str, list[dict]]:
     """分类抓取RSS源新闻，按“AI大模型 / 美股与全球 / A股与国内”划分"""
     categorized_news: dict[str, list[dict]] = {
@@ -133,14 +180,25 @@ def fetch_rss_news() -> dict[str, list[dict]]:
                 continue
 
             for entry in feed.entries[:6]:
+                raw_title = entry.get("title", "无标题")
+                raw_summary = (entry.get("summary", "") or "")
+
+                # 对默认认为是英文的源尝试翻译为中文
+                if source_name in ENGLISH_SOURCES:
+                    title_zh = translate_text(raw_title)
+                    summary_zh = translate_text(raw_summary)[:150] + "..." if raw_summary else ""
+                else:
+                    title_zh = raw_title
+                    summary_zh = raw_summary[:150] + "..." if raw_summary else ""
+
                 news_item = {
                     "source": source_name,
-                    "title": entry.get("title", "无标题"),
+                    "title": raw_title,
+                    "title_zh": title_zh,
                     "link": entry.get("link", ""),
                     "published": entry.get("published", ""),
-                    "summary": (entry.get("summary", "") or "")[:150] + "..."
-                    if entry.get("summary")
-                    else "",
+                    "summary": summary_zh,
+                    "summary_raw": raw_summary,
                 }
                 if category in categorized_news:
                     categorized_news[category].append(news_item)
