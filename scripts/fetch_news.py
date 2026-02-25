@@ -410,6 +410,13 @@ def format_email_content(
             .news-title a:hover {{ color: #ff4757; }}
             .news-summary {{ font-size: 13px; color: #747d8c; line-height: 1.5; }}
 
+            /* A股板块视角：热门板块 + 板块相关新闻样式 */
+            .hot-sectors {{ display: flex; flex-wrap: wrap; gap: 10px; margin: 15px 0; }}
+            .sector-tag {{ background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: #fff; padding: 8px 14px; border-radius: 20px; font-weight: bold; font-size: 13px; }}
+            .sector-count {{ background: rgba(255,255,255,0.3); padding: 2px 8px; border-radius: 10px; margin-left: 5px; font-size: 11px; }}
+            .sector-news {{ background: #fffaf0; padding: 10px 12px; margin: 8px 0; border-left: 4px solid #ffa502; border-radius: 4px; }}
+            .sector-news-title {{ font-size: 14px; color: #2f3542; margin: 2px 0; }}
+
             .footer {{ text-align: center; color: #a4b0be; font-size: 12px; padding: 20px; border-top: 1px solid #f1f2f6; background: #fafafa; }}
         </style>
     </head>
@@ -488,6 +495,49 @@ def format_email_content(
             </div>
             """
         html += "</div>"
+
+    # 3. A股板块视角：恢复“今日热门板块”和“今日财经要闻”的中文版式
+    html += '<div class="section-title">📊 A股板块视角</div>'
+
+    # 今日热门板块（基于新闻提及次数）
+    if hot_sectors:
+        html += '<div class="section-title">🔥 今日热门板块</div>'
+        html += '<div class="hot-sectors">'
+        for sector, items in hot_sectors:
+            html += f'''
+            <div class="sector-tag">
+                {sector} <span class="sector-count">{len(items)}条</span>
+            </div>
+            '''
+        html += '</div>'
+
+        # 每个板块列出若干代表性新闻
+        for sector, items in hot_sectors:
+            html += f'<div style="margin: 15px 0 5px 0;"><strong>📊 {sector} 板块相关：</strong></div>'
+            for item in items[:3]:
+                html += f'''
+                <div class="sector-news">
+                    <div class="sector-news-title">• {item['title']}</div>
+                    <div style="font-size: 12px; color: #999; margin-top: 4px;">
+                        来源: {item['source']} | <a href="{item['link']}" style="color: #ffa502;" target="_blank">查看详情</a>
+                    </div>
+                </div>
+                '''
+
+    # 今日财经要闻（偏向A股与国内资讯，保留中文语境）
+    cn_news = categorized_news.get("A股与国内", [])
+    if cn_news:
+        html += '<div class="section-title">📰 今日财经要闻</div>'
+        for news in cn_news:
+            title = news.get("title_zh") or news.get("title", "")
+            summary = news.get("summary", "")
+            html += f"""
+            <div class="news-card">
+                <div><span class="news-source">{news['source']}</span></div>
+                <div class="news-title"><a href="{news['link']}" target="_blank">{title}</a></div>
+                <div class="news-summary">{summary}</div>
+            </div>
+            """
 
     html += """
             </div>
