@@ -10,7 +10,7 @@ import smtplib
 import warnings
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
-from email.mime_text import MIMEText
+from email.mime.text import MIMEText
 from functools import wraps
 import time
 
