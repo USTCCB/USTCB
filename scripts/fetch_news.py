@@ -434,48 +434,60 @@ def format_email_content(news_list, hot_sectors, hot_stocks, us_events, hk_event
         <div style="padding: 20px;">
     """
 
-    # 全球市场 & AI 大模型部分
-    if us_events or hk_events or ai_events:
-        html_content += '<div class="section-title">🌍 美股 / 港股大事件 & AI 大模型动态</div>'
+    # 全球市场 & AI 大模型部分（无论是否有事件，固定展示一个版块，便于你对比）
+    html_content += '<div class="section-title">🌍 美股 / 港股大事件 & AI 大模型动态</div>'
 
-        # 美股
-        if us_events:
-            html_content += '<div style="margin: 10px 0 5px 0; font-weight: bold;">🌎 美股 / 全球市场：</div>'
-            for item in us_events:
-                html_content += f"""
-                <div class="news-item">
-                    <div class="source">📰 {item.get('source', '')}</div>
-                    <div class="title">{item.get('title', '')}</div>
-                    <div class="summary">{item.get('summary', '')}</div>
-                    <a href="{item.get('link', '')}" class="link">查看详情 →</a>
-                </div>
-                """
+    has_any_event = bool(us_events or hk_events or ai_events)
 
-        # 港股
-        if hk_events:
-            html_content += '<div style="margin: 15px 0 5px 0; font-weight: bold;">🌏 港股市场：</div>'
-            for item in hk_events:
-                html_content += f"""
-                <div class="news-item">
-                    <div class="source">📰 {item.get('source', '')}</div>
-                    <div class="title">{item.get('title', '')}</div>
-                    <div class="summary">{item.get('summary', '')}</div>
-                    <a href="{item.get('link', '')}" class="link">查看详情 →</a>
-                </div>
-                """
+    # 美股
+    if us_events:
+        html_content += '<div style="margin: 10px 0 5px 0; font-weight: bold;">🌎 美股 / 全球市场：</div>'
+        for item in us_events:
+            html_content += f"""
+            <div class="news-item">
+                <div class="source">📰 {item.get('source', '')}</div>
+                <div class="title">{item.get('title', '')}</div>
+                <div class="summary">{item.get('summary', '')}</div>
+                <a href="{item.get('link', '')}" class="link">查看详情 →</a>
+            </div>
+            """
 
-        # AI 大模型
-        if ai_events:
-            html_content += '<div style="margin: 15px 0 5px 0; font-weight: bold;">🤖 AI 大模型最新动态：</div>'
-            for item in ai_events:
-                html_content += f"""
-                <div class="news-item">
-                    <div class="source">📰 {item.get('source', '')}</div>
-                    <div class="title">{item.get('title', '')}</div>
-                    <div class="summary">{item.get('summary', '')}</div>
-                    <a href="{item.get('link', '')}" class="link">查看详情 →</a>
-                </div>
-                """
+    # 港股
+    if hk_events:
+        html_content += '<div style="margin: 15px 0 5px 0; font-weight: bold;">🌏 港股市场：</div>'
+        for item in hk_events:
+            html_content += f"""
+            <div class="news-item">
+                <div class="source">📰 {item.get('source', '')}</div>
+                <div class="title">{item.get('title', '')}</div>
+                <div class="summary">{item.get('summary', '')}</div>
+                <a href="{item.get('link', '')}" class="link">查看详情 →</a>
+            </div>
+            """
+
+    # AI 大模型
+    if ai_events:
+        html_content += '<div style="margin: 15px 0 5px 0; font-weight: bold;">🤖 AI 大模型最新动态：</div>'
+        for item in ai_events:
+            html_content += f"""
+            <div class="news-item">
+                <div class="source">📰 {item.get('source', '')}</div>
+                <div class="title">{item.get('title', '')}</div>
+                <div class="summary">{item.get('summary', '')}</div>
+                <a href="{item.get('link', '')}" class="link">查看详情 →</a>
+            </div>
+            """
+
+    # 如果当天 RSS 里没有明显的美股/港股/AI 相关新闻，给出提示文字，避免你误以为代码没生效
+    if not has_any_event:
+        html_content += """
+        <div class="news-item">
+            <div class="summary">
+                今日从当前RSS新闻源中未检测到明确标注的美股、港股或AI大模型相关重大新闻。
+                你可以参考下方的「今日财经要闻」和「热门板块」获取整体市场信息。
+            </div>
+        </div>
+        """
 
     # 优质股票推荐部分
     if hot_stocks:
