@@ -58,6 +58,47 @@ SECTOR_KEYWORDS = {
     '汽车': ['汽车', '新能源车', '智能驾驶', '自动驾驶'],
 }
 
+# 美股 / 港股 / AI 大模型 关键词
+US_MARKET_KEYWORDS = [
+    '美股',
+    '美国股市',
+    '纳斯达克',
+    '纳指',
+    '道琼斯',
+    '标普500',
+    '标普 500',
+    'S&P 500',
+    '纽约证交所',
+    '纽约证券交易所',
+]
+
+HK_MARKET_KEYWORDS = [
+    '港股',
+    '香港股市',
+    '恒生指数',
+    '恒指',
+    '国企指数',
+    '港交所',
+    '联交所',
+]
+
+AI_MODEL_KEYWORDS = [
+    '大模型',
+    '人工智能',
+    'AI',
+    '生成式AI',
+    '生成式 AI',
+    'ChatGPT',
+    '通义千问',
+    '千问',
+    'GLM',
+    'DeepSeek',
+    'MiniMax',
+    '月之暗面',
+    'Ring-2.5',
+    'Qwen',
+]
+
 # 生成所有A股主板股票代码
 # 上海交易所：600000-603999 + .SS
 # 深圳交易所：000000-002999 + .SZ
@@ -173,6 +214,46 @@ def analyze_hot_sectors(news_list):
     )[:5]
 
     return hot_sectors
+
+
+def analyze_global_and_ai_news(news_list, max_items_per_section=5):
+    """从新闻中抽取美股/港股大事件与AI大模型动态"""
+    us_events = []
+    hk_events = []
+    ai_events = []
+
+    seen_us = set()
+    seen_hk = set()
+    seen_ai = set()
+
+    for news in news_list:
+        text = (news.get('title', '') or '') + ' ' + (news.get('summary', '') or '')
+
+        # 美股 / 美国市场
+        if len(us_events) < max_items_per_section:
+            if any(keyword in text for keyword in US_MARKET_KEYWORDS):
+                key = news.get('title', '') + news.get('link', '')
+                if key not in seen_us:
+                    us_events.append(news)
+                    seen_us.add(key)
+
+        # 港股 / 香港市场
+        if len(hk_events) < max_items_per_section:
+            if any(keyword in text for keyword in HK_MARKET_KEYWORDS):
+                key = news.get('title', '') + news.get('link', '')
+                if key not in seen_hk:
+                    hk_events.append(news)
+                    seen_hk.add(key)
+
+        # AI 大模型
+        if len(ai_events) < max_items_per_section:
+            if any(keyword in text for keyword in AI_MODEL_KEYWORDS):
+                key = news.get('title', '') + news.get('link', '')
+                if key not in seen_ai:
+                    ai_events.append(news)
+                    seen_ai.add(key)
+
+    return us_events, hk_events, ai_events
 
 def get_hot_stocks(hot_sector_names):
     """使用Yahoo Finance获取A股优质股票 - 分析全部主板股票"""
@@ -297,7 +378,7 @@ def get_hot_stocks(hot_sector_names):
         print(f"⚠️ 获取股票数据失败: {str(e)[:100]}")
         return []
 
-def format_email_content(news_list, hot_sectors, hot_stocks):
+def format_email_content(news_list, hot_sectors, hot_stocks, us_events, hk_events, ai_events):
     """格式化邮件内容为HTML"""
     today = datetime.now().strftime('%Y年%m月%d日')
 
@@ -352,6 +433,49 @@ def format_email_content(news_list, hot_sectors, hot_stocks):
         </div>
         <div style="padding: 20px;">
     """
+
+    # 全球市场 & AI 大模型部分
+    if us_events or hk_events or ai_events:
+        html_content += '<div class="section-title">🌍 美股 / 港股大事件 & AI 大模型动态</div>'
+
+        # 美股
+        if us_events:
+            html_content += '<div style="margin: 10px 0 5px 0; font-weight: bold;">🌎 美股 / 全球市场：</div>'
+            for item in us_events:
+                html_content += f"""
+                <div class="news-item">
+                    <div class="source">📰 {item.get('source', '')}</div>
+                    <div class="title">{item.get('title', '')}</div>
+                    <div class="summary">{item.get('summary', '')}</div>
+                    <a href="{item.get('link', '')}" class="link">查看详情 →</a>
+                </div>
+                """
+
+        # 港股
+        if hk_events:
+            html_content += '<div style="margin: 15px 0 5px 0; font-weight: bold;">🌏 港股市场：</div>'
+            for item in hk_events:
+                html_content += f"""
+                <div class="news-item">
+                    <div class="source">📰 {item.get('source', '')}</div>
+                    <div class="title">{item.get('title', '')}</div>
+                    <div class="summary">{item.get('summary', '')}</div>
+                    <a href="{item.get('link', '')}" class="link">查看详情 →</a>
+                </div>
+                """
+
+        # AI 大模型
+        if ai_events:
+            html_content += '<div style="margin: 15px 0 5px 0; font-weight: bold;">🤖 AI 大模型最新动态：</div>'
+            for item in ai_events:
+                html_content += f"""
+                <div class="news-item">
+                    <div class="source">📰 {item.get('source', '')}</div>
+                    <div class="title">{item.get('title', '')}</div>
+                    <div class="summary">{item.get('summary', '')}</div>
+                    <a href="{item.get('link', '')}" class="link">查看详情 →</a>
+                </div>
+                """
 
     # 优质股票推荐部分
     if hot_stocks:
@@ -510,16 +634,28 @@ def main():
     hot_sector_names = [sector for sector, _ in hot_sectors]
     print(f"✅ 发现 {len(hot_sectors)} 个热门板块\n")
 
-    # 3. 获取综合评分高的股票
+    # 3. 提取美股 / 港股 / AI 大模型相关的大事件
+    print("🌍 正在分析美股、港股与AI大模型相关新闻...")
+    us_events, hk_events, ai_events = analyze_global_and_ai_news(news_list)
+    print(f"✅ 美股事件 {len(us_events)} 条，港股事件 {len(hk_events)} 条，AI大模型 {len(ai_events)} 条\n")
+
+    # 4. 获取综合评分高的股票
     print("📊 正在分析优质股票...")
     hot_stocks = get_hot_stocks(hot_sector_names)
     print(f"✅ 筛选出 {len(hot_stocks)} 只优质股票\n")
 
-    # 4. 格式化邮件内容
+    # 5. 格式化邮件内容
     print("📝 正在格式化邮件内容...")
-    email_content = format_email_content(news_list, hot_sectors, hot_stocks)
+    email_content = format_email_content(
+        news_list,
+        hot_sectors,
+        hot_stocks,
+        us_events,
+        hk_events,
+        ai_events,
+    )
 
-    # 5. 发送邮件
+    # 6. 发送邮件
     print("📧 正在发送邮件...")
     success = send_email(email_content, recipient_email, smtp_password)
 
