@@ -14,7 +14,7 @@ logging.basicConfig(
     ],
 )
 
-from core.runner import DailyRunner
+from runner import DailyRunner
 
 if __name__ == "__main__":
     DailyRunner().run()
