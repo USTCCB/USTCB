@@ -350,7 +350,8 @@ def get_hot_stocks(hot_sector_names: list[str]) -> list[dict]:
 
                 score += sector_score
 
-                if score >= 75:
+                # 阈值适当降低，保证每天更容易筛出一些标的
+                if score >= 65:
                     stocks_data.append(
                         {
                             "code": symbol.split(".")[0],
