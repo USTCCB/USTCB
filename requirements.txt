@@ -1,11 +1,9 @@
-# 项目依赖（用于本地运行和部署）
-#
-# 说明：
-# - 以下库都是代码中已经使用到的库，仅在此列出方便安装
-# - 如需固定版本，可以根据自己环境补充具体版本号，例如 feedparser==6.0.11
-
-feedparser
-yfinance
-pandas
-requests
-pydantic-settings
+feedparser>=6.0.10
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+numpy>=1.24.0
+pandas>=2.0.0
+yfinance>=0.2.36
+apscheduler>=3.10.0
+python-dotenv>=1.0.0

@@ -1,0 +1,48 @@
+name: 📈 USTCB 财经日报
+
+on:
+  # 每个工作日北京时间 07:30（UTC 23:30 = 北京次日 07:30）
+  schedule:
+    - cron: '30 23 * * 0-4'
+
+  # 可在 Actions 页面手动点击运行
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '只生成 HTML 不发邮件 (true/false)'
+        required: false
+        default: 'false'
+
+jobs:
+  daily-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: ⬇️ 检出代码
+        uses: actions/checkout@v4
+
+      - name: 🐍 配置 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: 📦 安装依赖
+        run: pip install -r requirements.txt
+
+      - name: 📈 生成并发送日报
+        env:
+          USTCB_EMAIL_SENDER:   ${{ secrets.USTCB_EMAIL_SENDER }}
+          USTCB_EMAIL_PASSWORD: ${{ secrets.USTCB_EMAIL_PASSWORD }}
+          USTCB_EMAIL_TO:       ${{ secrets.USTCB_EMAIL_TO }}
+          DRY_RUN:              ${{ github.event.inputs.dry_run || 'false' }}
+        run: python main.py
+
+      - name: 📎 上传 HTML 报告（可在 Actions 页下载查看）
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: daily-report-${{ github.run_id }}
+          path: .cache/report_*.html
+          retention-days: 7
