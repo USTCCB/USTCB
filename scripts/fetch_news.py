@@ -291,6 +291,7 @@ def get_hot_stocks(hot_sector_names: list[str]) -> list[dict]:
                 avg_vol_5 = v.tail(6).iloc[:5].mean()
                 vol_ratio = v.iloc[-1] / avg_vol_5 if avg_vol_5 > 0 else 0
 
+                # 近14日价格波动，用于趋势强弱判断（RSI）
                 delta = c.diff()
                 gain = delta.where(delta > 0, 0).rolling(window=14).mean()
                 loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
@@ -299,56 +300,74 @@ def get_hot_stocks(hot_sector_names: list[str]) -> list[dict]:
                 rs = gain / loss
                 rsi = 100 - (100 / (1 + rs.iloc[-1]))
 
-                # === 强力打分系统 (满分 100分) ===
+                # 近5个交易日的涨幅（避免只看一天涨幅）
+                change_5d_pct = None
+                if len(c) >= 6:
+                    base_5d = c.iloc[-6]
+                    if base_5d > 0:
+                        change_5d_pct = (current_price - base_5d) / base_5d * 100
+
+                # === 综合评分系统 (满分 100 分) ===
                 score = 0
 
-                # 1. 趋势均线得分 (满分25) - 站上20日均线得满分
-                if current_price > sma20:
-                    trend_score = 25
-                else:
-                    trend_score = max(0, 25 - ((sma20 - current_price) / sma20 * 500))
-                score += trend_score
+                # 1. 涨幅因子 (满分 30 分：当日 + 近5日)
+                change_score = 0.0
+                if change_pct > 0:
+                    # 当日涨幅最多按 10% 计，映射到 0-15 分
+                    capped_1d = min(change_pct, 10)
+                    change_score += (capped_1d / 10.0) * 15.0
+                if change_5d_pct is not None and change_5d_pct > 0:
+                    # 近5日最多按 20% 计，映射到 0-15 分
+                    capped_5d = min(change_5d_pct, 20)
+                    change_score += (capped_5d / 20.0) * 15.0
+                change_score = min(change_score, 30.0)
+                score += change_score
 
-                # 2. 动能 RSI 得分 (满分25)
-                if 50 <= rsi <= 70:
-                    rsi_score = 25
-                elif 40 <= rsi < 50:
-                    rsi_score = 15
-                elif rsi > 70:
-                    rsi_score = 10
-                else:
-                    rsi_score = 0
-                score += rsi_score
-
-                # 3. 量价异动得分 (满分20)
-                if vol_ratio >= 2.0:
+                # 2. 成交量因子 (满分 25 分)
+                if vol_ratio >= 2.5:
+                    vol_score = 25
+                elif vol_ratio >= 2.0:
                     vol_score = 20
                 elif vol_ratio >= 1.5:
                     vol_score = 15
                 elif vol_ratio >= 1.0:
-                    vol_score = 5
+                    vol_score = 8
                 else:
                     vol_score = 0
                 score += vol_score
 
-                # 4. 热门板块共振得分 (满分30)
+                # 3. 趋势因子 (满分 20 分)：价格在均线上方 + RSI 强势区
+                trend_score = 0
+                if current_price > sma20:
+                    trend_score += 10
+                    if current_price > sma20 * 1.03:
+                        trend_score += 5
+                if 50 <= rsi <= 70:
+                    trend_score += 10
+                elif 40 <= rsi < 50 or 70 < rsi <= 80:
+                    trend_score += 5
+                trend_score = min(trend_score, 20)
+                score += trend_score
+
+                # 4. 板块热度因子 (满分 25 分)
                 stock_name = get_stock_name(symbol)
                 sector_score = 0
                 for sector_name in hot_sector_names:
                     for keyword in SECTOR_KEYWORDS.get(sector_name, []):
                         if keyword in stock_name:
-                            sector_score = 30
+                            sector_score = 25
                             break
                     if sector_score > 0:
                         break
 
-                if sector_score == 0 and vol_ratio > 1.8 and trend_score == 25 and rsi_score == 25:
-                    sector_score = 20
+                # 没有明显题材，但量能+趋势+涨幅都很强，给一定题材加分
+                if sector_score == 0 and vol_ratio > 1.8 and trend_score >= 15 and change_score >= 20:
+                    sector_score = 15
 
                 score += sector_score
 
-                # 阈值适当降低，保证每天更容易筛出一些标的
-                if score >= 65:
+                # 综合评分阈值：60 分以上视作“优质”候选
+                if score >= 60:
                     stocks_data.append(
                         {
                             "code": symbol.split(".")[0],
@@ -357,8 +376,8 @@ def get_hot_stocks(hot_sector_names: list[str]) -> list[dict]:
                             "change_pct": float(change_pct),
                             "vol_ratio": float(vol_ratio),
                             "rsi": float(rsi),
-                            "score": int(score),
-                            "details": f"趋势:{int(trend_score)} 动能:{int(rsi_score)} 量能:{int(vol_score)} 题材:{int(sector_score)}",
+                            "score": int(round(score)),
+                            "details": f"涨幅:{int(round(change_score))} 量能:{int(vol_score)} 趋势:{int(trend_score)} 题材:{int(sector_score)}",
                         }
                     )
 
@@ -477,12 +496,13 @@ def format_email_content(
         </p>
         """
 
-    # 2. 算法严选 A 股
-    html += '<div class="section-title">🎯 量化引擎严选 A股标的 (Top 10)</div>'
+    # 2. 综合评分优质股票（主板）
+    html += '<div class="section-title">⭐ 综合评分优质股票（主板）</div>'
     if hot_stocks:
         html += """
         <div class="warning-box">
-            <b>💡 算法说明：</b>采用 SMA均线(定趋势) + RSI强弱(寻多头) + 均量突破比率(抓异动资金) + 题材词频共振 进行满分100分的严苛筛选。仅作技术参考，不构成投资依据！
+            <strong>⚠️ 评分说明：</strong>综合考虑涨幅(30%)、成交量(25%)、趋势(20%)、板块热度(25%)四个维度。
+            仅供参考，不构成投资建议！
         </div>
         <table class="stock-table">
             <tr>
