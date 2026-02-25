@@ -1,9 +1,10 @@
 name: 📈 USTCB 财经日报
 
 on:
-  # 每个工作日北京时间 07:30（UTC 23:30 = 北京次日 07:30）
+  # 每天早上 7:30 和晚上 18:30（北京时间）
   schedule:
-    - cron: '30 23 * * 0-4'
+    - cron: '30 23 * * *'  # UTC 23:30 = 北京时间 07:30
+    - cron: '30 10 * * *'  # UTC 10:30 = 北京时间 18:30
 
   # 可在 Actions 页面手动点击运行
   workflow_dispatch:
@@ -36,6 +37,7 @@ jobs:
           USTCB_EMAIL_SENDER:   ${{ secrets.USTCB_EMAIL_SENDER }}
           USTCB_EMAIL_PASSWORD: ${{ secrets.USTCB_EMAIL_PASSWORD }}
           USTCB_EMAIL_TO:       ${{ secrets.USTCB_EMAIL_TO }}
+          TRANSLATE_API_URL:    ${{ secrets.TRANSLATE_API_URL }}
           DRY_RUN:              ${{ github.event.inputs.dry_run || 'false' }}
         run: python main.py
 
