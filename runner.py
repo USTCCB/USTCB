@@ -19,7 +19,7 @@ from news.market_hot import (
     fetch_hot_sectors, fetch_hot_stocks,
     fetch_north_fund_flow, fetch_market_overview,
 )
-from news.translator import translate_news
+from news.baidu_translator import translate_news
 from stock_selectors.multi_factor import run_selector
 from templates.email_builder import build_html_email
 from utils.mailer import send_html_email

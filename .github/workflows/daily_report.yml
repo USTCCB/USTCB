@@ -38,6 +38,8 @@ jobs:
           USTCB_EMAIL_PASSWORD: ${{ secrets.USTCB_EMAIL_PASSWORD }}
           USTCB_EMAIL_TO:       ${{ secrets.USTCB_EMAIL_TO }}
           TRANSLATE_API_URL:    ${{ secrets.TRANSLATE_API_URL }}
+          BAIDU_TRANSLATE_APPID:   ${{ secrets.BAIDU_TRANSLATE_APPID }}
+          BAIDU_TRANSLATE_SECRET:  ${{ secrets.BAIDU_TRANSLATE_SECRET }}
           DRY_RUN:              ${{ github.event.inputs.dry_run || 'false' }}
         run: python main.py
 
