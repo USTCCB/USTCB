@@ -47,7 +47,6 @@ class DailyRunner:
             weights=FACTOR_WEIGHTS,
             top_n=TOP_STOCKS_COUNT,
             stock_pool=STOCK_POOL if STOCK_POOL else None,
-            max_workers=CONCURRENT_WORKERS,
         )
 
         # ── 2. 生成 HTML ──────────────────────────────────────────
