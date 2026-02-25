@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "your-project-name"
+name = "ustcb"
 version = "0.1.0"
-description = "A brief description of your project."
-authors = ["Your Name <you@example.com>"]
+description = "USTCB - A股财经新闻日报：每天自动抓取主要财经网站RSS新闻，并通过邮件发送到QQ邮箱。"
+authors = ["USTCB Project <2403148578@qq.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
