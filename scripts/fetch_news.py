@@ -469,11 +469,21 @@ def format_email_content(
         html += f'<div class="cat-title">{cat} 资讯</div>'
 
         for news in news_list:
+            title = news.get("title_zh") or news.get("title", "")
+            raw_title = news.get("title", "")
+            summary = news.get("summary", "")
+
+            # 如果是英文源且存在中文翻译，在标题下方用小字显示原文标题
+            raw_title_html = ""
+            if news.get("source") in ENGLISH_SOURCES and title and raw_title and title != raw_title:
+                raw_title_html = f'<div style="font-size:12px;color:#a4b0be;margin-top:2px;">原文: {raw_title}</div>'
+
             html += f"""
             <div class="news-card">
                 <div><span class="news-source">{news['source']}</span></div>
-                <div class="news-title"><a href="{news['link']}" target="_blank">{news['title']}</a></div>
-                <div class="news-summary">{news['summary']}</div>
+                <div class="news-title"><a href="{news['link']}" target="_blank">{title}</a></div>
+                {raw_title_html}
+                <div class="news-summary">{summary}</div>
             </div>
             """
         html += "</div>"
