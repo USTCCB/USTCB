@@ -35,10 +35,22 @@ RSS_FEEDS = {
 
     # RSSHub公共实例（中文源）
     'RSSHub-财联社': 'https://rsshub.app/cls/telegraph',
-    'RSSHub-36氪': 'https://rsshub.app/36kr/newsflashes',
+    'RSSHub-36氪快讯': 'https://rsshub.app/36kr/newsflashes',
     'RSSHub-新浪财经': 'https://rsshub.app/sina/finance',
-    'RSSHub-雪球': 'https://rsshub.app/xueqiu/hots',
-    'RSSHub-第一财经': 'https://rsshub.app/yicai/brief',
+    'RSSHub-雪球热门': 'https://rsshub.app/xueqiu/hots',
+    'RSSHub-第一财经简讯': 'https://rsshub.app/yicai/brief',
+
+    # === 新增：欧美免费RSS源，用于加强美股 / 港股 / AI 大模型相关内容 ===
+    # Reuters - US Markets（英文，美股与全球市场要闻）
+    'Reuters-US-Markets': 'http://feeds.reuters.com/reuters/USmarkets',
+    # Reuters - World News（全球宏观、地缘政治，对市场有影响）
+    'Reuters-World-News': 'http://feeds.reuters.com/reuters/worldNews',
+    # TechCrunch - Artificial Intelligence（AI / 大模型 / 科技创新）
+    'TechCrunch-AI': 'https://techcrunch.com/tag/artificial-intelligence/feed/',
+    # TechCrunch - 全站科技要闻
+    'TechCrunch-Main': 'https://techcrunch.com/feed/',
+    # South China Morning Post - Business（英文港股与亚洲商业新闻）
+    'SCMP-Business': 'https://www.scmp.com/rss/91/feed',
 }
 
 # 请求头，模拟浏览器
@@ -60,6 +72,7 @@ SECTOR_KEYWORDS = {
 
 # 美股 / 港股 / AI 大模型 关键词
 US_MARKET_KEYWORDS = [
+    # 中文关键词
     '美股',
     '美国股市',
     '纳斯达克',
@@ -67,12 +80,21 @@ US_MARKET_KEYWORDS = [
     '道琼斯',
     '标普500',
     '标普 500',
-    'S&P 500',
     '纽约证交所',
     '纽约证券交易所',
+    # 英文关键词（方便匹配 Reuters / TechCrunch 等英文源）
+    'US stocks',
+    'U.S. stocks',
+    'Wall Street',
+    'Nasdaq',
+    'Dow Jones',
+    'S&P 500',
+    'S&P500',
+    'NYSE',
 ]
 
 HK_MARKET_KEYWORDS = [
+    # 中文关键词
     '港股',
     '香港股市',
     '恒生指数',
@@ -80,23 +102,38 @@ HK_MARKET_KEYWORDS = [
     '国企指数',
     '港交所',
     '联交所',
+    # 英文关键词
+    'Hong Kong stocks',
+    'Hong Kong market',
+    'Hang Seng',
+    'HSI',
+    'HKEX',
 ]
 
 AI_MODEL_KEYWORDS = [
+    # 中文关键词
     '大模型',
     '人工智能',
-    'AI',
     '生成式AI',
     '生成式 AI',
-    'ChatGPT',
     '通义千问',
     '千问',
-    'GLM',
+    '月之暗面',
+    # 中英文通用缩写
+    'AI',
+    'AGI',
+    'LLM',
+    # 英文关键词
+    'artificial intelligence',
+    'large language model',
+    'generative AI',
+    'gen AI',
+    'ChatGPT',
+    'GPT-4',
+    'Qwen',
     'DeepSeek',
     'MiniMax',
-    '月之暗面',
     'Ring-2.5',
-    'Qwen',
 ]
 
 # 生成所有A股主板股票代码
