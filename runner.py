@@ -40,7 +40,7 @@ class DailyRunner:
         indices    = fetch_market_overview()
         north_flow = fetch_north_fund_flow()
         hot_sectors = fetch_hot_sectors(top_n=SECTOR_TOP_N)
-        hot_stocks  = fetch_hot_stocks(top_n=MARKET_TOP_N)
+        hot_stocks  = fetch_hot_stocks(stock_pool=STOCK_POOL, top_n=MARKET_TOP_N)
 
         logger.info("步骤 3/5：运行多因子量化选股...")
         top_picks = run_selector(
