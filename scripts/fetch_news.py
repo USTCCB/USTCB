@@ -124,16 +124,16 @@ def retry_on_failure(max_retries: int = 3, delay: int = 2):
 def translate_text(text: str, target_lang: str = "zh") -> str:
     """
     使用免费/自建的 LibreTranslate 兼容 API 将文本翻译为中文。
-    - 默认读取环境变量 TRANSLATE_API_URL（必须），可选 TRANSLATE_API_KEY。
+    - 默认使用公共实例 https://libretranslate.com/translate
+    - 如需自定义，可通过环境变量 TRANSLATE_API_URL 覆盖
     - 调用失败时直接返回原文，保证邮件正常发送。
     """
     text = (text or "").strip()
     if not text:
         return text
 
-    api_url = os.getenv("TRANSLATE_API_URL")
+    api_url = os.getenv("TRANSLATE_API_URL", "https://libretranslate.com/translate")
     if not api_url:
-        # 未配置翻译服务时直接返回原文
         return text
 
     payload = {
@@ -142,9 +142,6 @@ def translate_text(text: str, target_lang: str = "zh") -> str:
         "target": target_lang,
         "format": "text",
     }
-    api_key = os.getenv("TRANSLATE_API_KEY")
-    if api_key:
-        payload["api_key"] = api_key
 
     try:
         resp = requests.post(api_url, json=payload, timeout=10)
@@ -429,74 +426,7 @@ def format_email_content(
             <div class="content-pad">
     """
 
-    # 1. 算法严选 A 股
-    html += '<div class="section-title">🎯 量化引擎严选 A股标的 (Top 10)</div>'
-    if hot_stocks:
-        html += """
-        <div class="warning-box">
-            <b>💡 算法说明：</b>采用 SMA均线(定趋势) + RSI强弱(寻多头) + 均量突破比率(抓异动资金) + 题材词频共振 进行满分100分的严苛筛选。仅作技术参考，不构成投资依据！
-        </div>
-        <table class="stock-table">
-            <tr>
-                <th>股票名称</th>
-                <th>现价</th>
-                <th>日涨幅</th>
-                <th>量比(对5日)</th>
-                <th>RSI(14)</th>
-                <th>量化评分</th>
-            </tr>
-        """
-        for stock in hot_stocks:
-            html += f"""
-            <tr>
-                <td><b>{stock['name']}</b><br><span style="color:#a4b0be;font-size:12px;">{stock['code']}</span></td>
-                <td class="price-up">¥{stock['price']:.2f}</td>
-                <td class="price-up">+{stock['change_pct']:.2f}%</td>
-                <td>{stock['vol_ratio']:.1f}x</td>
-                <td>{stock['rsi']:.1f}</td>
-                <td>
-                    <span class="score-badge">{stock['score']} 分</span>
-                    <span class="detail-text">{stock['details']}</span>
-                </td>
-            </tr>
-            """
-        html += "</table>"
-    else:
-        html += '<p style="color:#747d8c;">今日无符合严苛筛选标准的标的，建议防守观望。</p>'
-
-    # 2. 全市场资讯 (按分类渲染)
-    html += '<div class="section-title">📰 全球前沿与财经要闻</div>'
-
-    display_order = ["AI大模型", "美股与全球", "A股与国内"]
-    for cat in display_order:
-        news_list = categorized_news.get(cat, [])
-        if not news_list:
-            continue
-
-        html += '<div class="category-wrapper">'
-        html += f'<div class="cat-title">{cat} 资讯</div>'
-
-        for news in news_list:
-            title = news.get("title_zh") or news.get("title", "")
-            raw_title = news.get("title", "")
-            summary = news.get("summary", "")
-
-            # 如果是英文源且存在中文翻译，在标题下方用小字显示原文标题
-            raw_title_html = ""
-            if news.get("source") in ENGLISH_SOURCES and title and raw_title and title != raw_title:
-                raw_title_html = f'<div style="font-size:12px;color:#a4b0be;margin-top:2px;">原文: {raw_title}</div>'
-
-            html += f"""
-            <div class="news-card">
-                <div><span class="news-source">{news['source']}</span></div>
-                <div class="news-title"><a href="{news['link']}" target="_blank">{title}</a></div>
-                {raw_title_html}
-                <div class="news-summary">{summary}</div>
-            </div>
-            """
-        html += "</div>"
-
-    # 3. A股板块视角：恢复“今日热门板块”和“今日财经要闻”的中文版式
+    # 1. A股板块视角（先看整体热点，再看个股与全球）
     html += '<div class="section-title">📊 A股板块视角</div>'
 
     # 今日热门板块（基于新闻提及次数）
@@ -538,6 +468,73 @@ def format_email_content(
                 <div class="news-summary">{summary}</div>
             </div>
             """
+
+    # 2. 算法严选 A 股
+    html += '<div class="section-title">🎯 量化引擎严选 A股标的 (Top 10)</div>'
+    if hot_stocks:
+        html += """
+        <div class="warning-box">
+            <b>💡 算法说明：</b>采用 SMA均线(定趋势) + RSI强弱(寻多头) + 均量突破比率(抓异动资金) + 题材词频共振 进行满分100分的严苛筛选。仅作技术参考，不构成投资依据！
+        </div>
+        <table class="stock-table">
+            <tr>
+                <th>股票名称</th>
+                <th>现价</th>
+                <th>日涨幅</th>
+                <th>量比(对5日)</th>
+                <th>RSI(14)</th>
+                <th>量化评分</th>
+            </tr>
+        """
+        for stock in hot_stocks:
+            html += f"""
+            <tr>
+                <td><b>{stock['name']}</b><br><span style="color:#a4b0be;font-size:12px;">{stock['code']}</span></td>
+                <td class="price-up">¥{stock['price']:.2f}</td>
+                <td class="price-up">+{stock['change_pct']:.2f}%</td>
+                <td>{stock['vol_ratio']:.1f}x</td>
+                <td>{stock['rsi']:.1f}</td>
+                <td>
+                    <span class="score-badge">{stock['score']} 分</span>
+                    <span class="detail-text">{stock['details']}</span>
+                </td>
+            </tr>
+            """
+        html += "</table>"
+    else:
+        html += '<p style="color:#747d8c;">今日无符合严苛筛选标准的标的，建议防守观望。</p>'
+
+    # 3. 全市场资讯 (按分类渲染)
+    html += '<div class="section-title">📰 全球前沿与财经要闻</div>'
+
+    display_order = ["AI大模型", "美股与全球", "A股与国内"]
+    for cat in display_order:
+        news_list = categorized_news.get(cat, [])
+        if not news_list:
+            continue
+
+        html += '<div class="category-wrapper">'
+        html += f'<div class="cat-title">{cat} 资讯</div>'
+
+        for news in news_list:
+            title = news.get("title_zh") or news.get("title", "")
+            raw_title = news.get("title", "")
+            summary = news.get("summary", "")
+
+            # 如果是英文源且存在中文翻译，在标题下方用小字显示原文标题
+            raw_title_html = ""
+            if news.get("source") in ENGLISH_SOURCES and title and raw_title and title != raw_title:
+                raw_title_html = f'<div style="font-size:12px;color:#a4b0be;margin-top:2px;">原文: {raw_title}</div>'
+
+            html += f"""
+            <div class="news-card">
+                <div><span class="news-source">{news['source']}</span></div>
+                <div class="news-title"><a href="{news['link']}" target="_blank">{title}</a></div>
+                {raw_title_html}
+                <div class="news-summary">{summary}</div>
+            </div>
+            """
+        html += "</div>"
 
     html += """
             </div>
