@@ -8,7 +8,7 @@ from typing import List, Dict, Any
 
 from news.aggregator import NewsItem
 from news.market_hot import SectorInfo, StockHotInfo
-from selectors.multi_factor import StockScore
+from stock_selectors.multi_factor import StockScore
 
 
 # ─── 颜色辅助 ─────────────────────────────────────────────────
