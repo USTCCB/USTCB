@@ -231,3 +231,16 @@ def fetch_hot_stocks(stock_pool: List[str], top_n: int = 8) -> List[StockHotInfo
     result = [s for s in hot if 2 <= s.change_pct <= 19.9][:top_n]
     logger.info(f"热门股票 Top-{len(result)}: {[f'{s.name}({s.change_pct:+.2f}%)' for s in result]}")
     return result
+
+
+def fetch_north_fund_flow() -> Dict[str, Any]:
+    """
+    获取北向资金流向数据
+    注意: Yahoo Finance 无直接北向资金接口,这里返回模拟数据
+    """
+    logger.warning("北向资金数据暂不可用,返回模拟数据")
+    return {
+        "today_net": 0.0,
+        "week_net": 0.0,
+        "month_net": 0.0,
+    }
