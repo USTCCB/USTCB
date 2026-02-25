@@ -439,8 +439,8 @@ def format_email_content(
     <body>
         <div class="container">
             <div class="header">
-                <h1>📈 USTCB 全球量化资讯日报</h1>
-                <p style="margin: 5px 0 0 0; opacity: 0.9;">{today} · AI大模型 | 全球宏观 | A股量化严选</p>
+                <h1>📈 A股财经日报</h1>
+                <p style="margin: 5px 0 0 0; opacity: 0.9;">{today}</p>
             </div>
             <div class="content-pad">
     """
@@ -580,7 +580,7 @@ def format_email_content(
 def send_email(content: str, recipient_email: str, smtp_password: str) -> bool:
     sender_email = recipient_email
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"🌍 宏观视角·量化精选日报 - {datetime.now().strftime('%Y-%m-%d')}"
+    msg["Subject"] = f"📊 A股财经日报 - {datetime.now().strftime('%Y-%m-%d')}"
     msg["From"] = sender_email
     msg["To"] = recipient_email
 
